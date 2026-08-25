@@ -83,23 +83,22 @@ function Insights({ sessions }) {
         {categoryData.length === 0 ? (
           <p className="text-xs text-zinc-400 text-center py-8">No data yet.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={categoryData}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
-                cy="50%"
-                outerRadius={70}
-                label={({ name }) => name}
-                labelLine={false}
+                cy="45%"
+                outerRadius={60}
               >
                 {categoryData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip />
+              <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px' }} />
             </PieChart>
           </ResponsiveContainer>
         )}
