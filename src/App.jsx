@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 import LoginScreen from './components/LoginScreen';
 import Tracker from './components/Tracker';
 import TaskList from './components/TaskList';
@@ -7,7 +8,9 @@ import { DEFAULT_TARGET_HOURS } from './utils/format';
 import './index.css';
 
 function App() {
-  const [isAuthed, setIsAuthed] = useState(() => sessionStorage.getItem('focus_authed') === 'true');
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [targetHours, setTargetHours] = useState(() => {
     const raw = localStorage.getItem('focus_target_hours');
     const n = raw ? Number(raw) : DEFAULT_TARGET_HOURS;
@@ -28,6 +31,20 @@ function App() {
     return raw ? JSON.parse(raw) : [];
   });
 
+  // Listen for Supabase auth state (login, logout, token refresh)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('focus_sessions', JSON.stringify(sessions));
   }, [sessions]);
@@ -40,11 +57,6 @@ function App() {
     localStorage.setItem('focus_target_hours', String(targetHours));
   }, [targetHours]);
 
-  const handleSuccess = () => {
-    sessionStorage.setItem('focus_authed', 'true');
-    setIsAuthed(true);
-  };
-
   const handleSessionComplete = (session) => {
     setSessions((prev) => [session, ...prev]);
   };
@@ -54,12 +66,30 @@ function App() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
   const handleDeleteTask = (id) => setTasks((prev) => prev.filter((t) => t.id !== id));
 
-  if (!isAuthed) {
-    return <LoginScreen onSuccess={handleSuccess} />;
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm text-zinc-400">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen />;
   }
 
   return (
     <div className="min-h-screen flex flex-col items-center py-12 gap-2">
+      <div className="w-full max-w-sm flex justify-between items-center mb-2">
+        <p className="text-xs text-zinc-400">{session.user.email}</p>
+        <button onClick={handleLogout} className="text-xs text-rose-400">
+          Log out
+        </button>
+      </div>
       <Dashboard sessions={sessions} targetHours={targetHours} setTargetHours={setTargetHours} />
       <Tracker
         activeTracker={activeTracker}
