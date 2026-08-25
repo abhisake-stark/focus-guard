@@ -2,10 +2,17 @@ import { useState, useEffect } from 'react';
 import LoginScreen from './components/LoginScreen';
 import Tracker from './components/Tracker';
 import TaskList from './components/TaskList';
+import Dashboard from './components/Dashboard';
+import { DEFAULT_TARGET_HOURS } from './utils/format';
 import './index.css';
 
 function App() {
   const [isAuthed, setIsAuthed] = useState(() => sessionStorage.getItem('focus_authed') === 'true');
+  const [targetHours, setTargetHours] = useState(() => {
+    const raw = localStorage.getItem('focus_target_hours');
+    const n = raw ? Number(raw) : DEFAULT_TARGET_HOURS;
+    return Number.isFinite(n) && n > 0 ? n : DEFAULT_TARGET_HOURS;
+  });
   const [activeTracker, setActiveTracker] = useState({
     isTracking: false,
     startTime: null,
@@ -29,6 +36,10 @@ function App() {
     localStorage.setItem('focus_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
+  useEffect(() => {
+    localStorage.setItem('focus_target_hours', String(targetHours));
+  }, [targetHours]);
+
   const handleSuccess = () => {
     sessionStorage.setItem('focus_authed', 'true');
     setIsAuthed(true);
@@ -49,12 +60,12 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col items-center py-12 gap-2">
+      <Dashboard sessions={sessions} targetHours={targetHours} setTargetHours={setTargetHours} />
       <Tracker
         activeTracker={activeTracker}
         setActiveTracker={setActiveTracker}
         onSessionComplete={handleSessionComplete}
       />
-      <p className="text-xs text-zinc-400">{sessions.length} session(s) logged this run</p>
       <TaskList
         tasks={tasks}
         onAddTask={handleAddTask}
