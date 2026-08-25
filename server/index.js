@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { requireAuth } from './middleware/auth.js';
 
 dotenv.config();
 
@@ -10,6 +11,10 @@ app.use(express.json());
 
 app.get('/', (req, res) => {
   res.json({ status: 'FocusGuard API is running' });
+});
+
+app.get('/api/me', requireAuth, (req, res) => {
+  res.json({ user: req.user.email });
 });
 
 const PORT = process.env.PORT || 3001;
