@@ -5,6 +5,7 @@ import Tracker from './components/Tracker';
 import TaskList from './components/TaskList';
 import Dashboard from './components/Dashboard';
 import { DEFAULT_TARGET_HOURS } from './utils/format';
+import Insights from './components/Insights';
 import './index.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
   const [sessions, setSessions] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [activeTab, setActiveTab] = useState('tracker');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,6 +59,7 @@ function App() {
             category: s.category,
             note: s.note,
             durationMs: s.duration_ms,
+            startTime: s.start_time,
           }))
         );
       }
@@ -95,7 +98,13 @@ function App() {
       return;
     }
     setSessions((prev) => [
-      { id: data.id, category: data.category, note: data.note, durationMs: data.duration_ms },
+      {
+        id: data.id,
+        category: data.category,
+        note: data.note,
+        durationMs: data.duration_ms,
+        startTime: data.start_time,
+      },
       ...prev,
     ]);
   };
@@ -186,18 +195,51 @@ function App() {
           <button onClick={() => setErrorMsg('')}>✕</button>
         </div>
       )}
-      <Dashboard sessions={sessions} targetHours={targetHours} setTargetHours={setTargetHours} />
-      <Tracker
-        activeTracker={activeTracker}
-        setActiveTracker={setActiveTracker}
-        onSessionComplete={handleSessionComplete}
-      />
-      <TaskList
-        tasks={tasks}
-        onAddTask={handleAddTask}
-        onToggleTask={handleToggleTask}
-        onDeleteTask={handleDeleteTask}
-      />
+      <div className="w-full max-w-sm flex gap-2 mb-2">
+        <button
+          onClick={() => setActiveTab('tracker')}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium ${
+            activeTab === 'tracker'
+              ? 'bg-brand-500 text-white'
+              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+          }`}
+        >
+          Tracker
+        </button>
+        <button
+          onClick={() => setActiveTab('insights')}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium ${
+            activeTab === 'insights'
+              ? 'bg-brand-500 text-white'
+              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+          }`}
+        >
+          Insights
+        </button>
+      </div>
+
+      {activeTab === 'tracker' ? (
+        <>
+          <Dashboard
+            sessions={sessions}
+            targetHours={targetHours}
+            setTargetHours={setTargetHours}
+          />
+          <Tracker
+            activeTracker={activeTracker}
+            setActiveTracker={setActiveTracker}
+            onSessionComplete={handleSessionComplete}
+          />
+          <TaskList
+            tasks={tasks}
+            onAddTask={handleAddTask}
+            onToggleTask={handleToggleTask}
+            onDeleteTask={handleDeleteTask}
+          />
+        </>
+      ) : (
+        <Insights sessions={sessions} />
+      )}
     </div>
   );
 }
