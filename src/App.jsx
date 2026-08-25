@@ -21,6 +21,7 @@ function App() {
   });
   const [sessions, setSessions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -89,12 +90,14 @@ function App() {
       .select()
       .single();
 
-    if (!error && data) {
-      setSessions((prev) => [
-        { id: data.id, category: data.category, note: data.note, durationMs: data.duration_ms },
-        ...prev,
-      ]);
+    if (error) {
+      setErrorMsg('Failed to save tracking session. Please try again.');
+      return;
     }
+    setSessions((prev) => [
+      { id: data.id, category: data.category, note: data.note, durationMs: data.duration_ms },
+      ...prev,
+    ]);
   };
 
   const handleAddTask = async (task) => {
@@ -110,21 +113,31 @@ function App() {
       .select()
       .single();
 
-    if (!error && data) setTasks((prev) => [data, ...prev]);
+    if (error) {
+      setErrorMsg('Failed to add task. Please try again.');
+      return;
+    }
+    setTasks((prev) => [data, ...prev]);
   };
 
   const handleToggleTask = async (id) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
     const { error } = await supabase.from('tasks').update({ done: !task.done }).eq('id', id);
-    if (!error) {
-      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+    if (error) {
+      setErrorMsg('Failed to update task. Please try again.');
+      return;
     }
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
   };
 
   const handleDeleteTask = async (id) => {
     const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (!error) setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (error) {
+      setErrorMsg('Failed to delete task. Please try again.');
+      return;
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
   const setTargetHours = async (hours) => {
@@ -167,6 +180,12 @@ function App() {
           Log out
         </button>
       </div>
+      {errorMsg && (
+        <div className="w-full max-w-sm px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-500 text-xs flex justify-between items-center">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg('')}>✕</button>
+        </div>
+      )}
       <Dashboard sessions={sessions} targetHours={targetHours} setTargetHours={setTargetHours} />
       <Tracker
         activeTracker={activeTracker}
