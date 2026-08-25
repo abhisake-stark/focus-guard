@@ -78,3 +78,49 @@ export function emptyDay(dateKey, targetHours) {
     targetHours: targetHours || DEFAULT_TARGET_HOURS,
   };
 }
+
+export function computeStreak(sessions, targetHours) {
+  const targetMs = targetHours * 60 * 60 * 1000;
+
+  const byDay = {};
+  sessions.forEach((s) => {
+    if (!s.startTime) return;
+    const key = new Date(s.startTime).toDateString();
+    byDay[key] = (byDay[key] || 0) + s.durationMs;
+  });
+
+  let streak = 0;
+  const cursor = new Date();
+
+  for (let i = 0; i < 365; i++) {
+    const key = cursor.toDateString();
+    const isToday = i === 0;
+    const hasData = key in byDay;
+    const dayTotal = byDay[key] || 0;
+
+    if (isToday) {
+      // Today only counts once it has at least one logged session under goal.
+      // If nothing logged yet today, just skip it without breaking the streak.
+      if (hasData && dayTotal < targetMs) {
+        streak++;
+      } else if (!hasData) {
+        cursor.setDate(cursor.getDate() - 1);
+        continue;
+      } else {
+        break;
+      }
+    } else {
+      // Past days: no data means the streak has no evidence to continue — stop.
+      if (!hasData) break;
+      if (dayTotal < targetMs) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}

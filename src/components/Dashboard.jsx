@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatHuman, DEFAULT_TARGET_HOURS } from '../utils/format';
+import { formatHuman, computeStreak } from '../utils/format';
 
 function Dashboard({ sessions, targetHours, setTargetHours }) {
   const [isEditingGoal, setIsEditingGoal] = useState(false);
@@ -8,6 +8,7 @@ function Dashboard({ sessions, targetHours, setTargetHours }) {
   const totalMs = sessions.reduce((sum, s) => sum + s.durationMs, 0);
   const targetMs = targetHours * 60 * 60 * 1000;
   const percentUsed = Math.min(100, Math.round((totalMs / targetMs) * 100));
+  const streak = computeStreak(sessions, targetHours);
 
   const byCategory = sessions.reduce((acc, s) => {
     acc[s.category] = (acc[s.category] || 0) + s.durationMs;
@@ -31,8 +32,15 @@ function Dashboard({ sessions, targetHours, setTargetHours }) {
 
   return (
     <div className="w-full max-w-sm p-6 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm mt-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">Today's wasted time</p>
+        {streak > 0 && (
+          <span className="text-xs font-medium text-orange-500">
+            🔥 {streak} day{streak !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between mb-3">
         {!isEditingGoal ? (
           <button onClick={openGoalEditor} className="text-xs text-brand-500">
             Goal: {targetHours}h
