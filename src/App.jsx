@@ -6,6 +6,7 @@ import TaskList from './components/TaskList';
 import Dashboard from './components/Dashboard';
 import { DEFAULT_TARGET_HOURS } from './utils/format';
 import Insights from './components/Insights';
+import Pomodoro from './components/Pomodoro';
 import './index.css';
 
 function App() {
@@ -216,6 +217,16 @@ function App() {
         >
           Insights
         </button>
+        <button
+          onClick={() => setActiveTab('pomodoro')}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium ${
+            activeTab === 'pomodoro'
+              ? 'bg-brand-500 text-white'
+              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+          }`}
+        >
+          Focus
+        </button>
       </div>
 
       {activeTab === 'tracker' ? (
@@ -237,8 +248,10 @@ function App() {
             onDeleteTask={handleDeleteTask}
           />
         </>
-      ) : (
+      ) : activeTab === 'insights' ? (
         <Insights sessions={sessions} />
+      ) : (
+        <Pomodoro />
       )}
     </div>
   );
