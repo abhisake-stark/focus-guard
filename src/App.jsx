@@ -10,28 +10,18 @@ import './index.css';
 function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
-  const [targetHours, setTargetHours] = useState(() => {
-    const raw = localStorage.getItem('focus_target_hours');
-    const n = raw ? Number(raw) : DEFAULT_TARGET_HOURS;
-    return Number.isFinite(n) && n > 0 ? n : DEFAULT_TARGET_HOURS;
-  });
+  const [targetHours, setTargetHoursState] = useState(DEFAULT_TARGET_HOURS);
   const [activeTracker, setActiveTracker] = useState({
     isTracking: false,
     startTime: null,
     category: 'Social Media',
     note: '',
   });
-  const [sessions, setSessions] = useState(() => {
-    const raw = localStorage.getItem('focus_sessions');
-    return raw ? JSON.parse(raw) : [];
-  });
-  const [tasks, setTasks] = useState(() => {
-    const raw = localStorage.getItem('focus_tasks');
-    return raw ? JSON.parse(raw) : [];
-  });
+  const [sessions, setSessions] = useState([]);
+  const [tasks, setTasks] = useState([]);
 
-  // Listen for Supabase auth state (login, logout, token refresh)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -45,29 +35,108 @@ function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Load tasks, sessions, and settings once logged in
   useEffect(() => {
-    localStorage.setItem('focus_sessions', JSON.stringify(sessions));
-  }, [sessions]);
+    if (!session) return;
 
-  useEffect(() => {
-    localStorage.setItem('focus_tasks', JSON.stringify(tasks));
-  }, [tasks]);
+    const loadData = async () => {
+      setDataLoading(true);
 
-  useEffect(() => {
-    localStorage.setItem('focus_target_hours', String(targetHours));
-  }, [targetHours]);
+      const [tasksRes, sessionsRes, settingsRes] = await Promise.all([
+        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+        supabase.from('tracking_sessions').select('*').order('created_at', { ascending: false }),
+        supabase.from('user_settings').select('*').eq('user_id', session.user.id).maybeSingle(),
+      ]);
 
-  const handleSessionComplete = (session) => {
-    setSessions((prev) => [session, ...prev]);
+      if (tasksRes.data) setTasks(tasksRes.data);
+      if (sessionsRes.data) {
+        setSessions(
+          sessionsRes.data.map((s) => ({
+            id: s.id,
+            category: s.category,
+            note: s.note,
+            durationMs: s.duration_ms,
+          }))
+        );
+      }
+      if (settingsRes.data) {
+        setTargetHoursState(settingsRes.data.target_hours);
+      } else {
+        // First time login — create default settings row
+        await supabase
+          .from('user_settings')
+          .insert({ user_id: session.user.id, target_hours: DEFAULT_TARGET_HOURS });
+      }
+
+      setDataLoading(false);
+    };
+
+    loadData();
+  }, [session]);
+
+  const handleSessionComplete = async (sess) => {
+    if (!session) return;
+    const { data, error } = await supabase
+      .from('tracking_sessions')
+      .insert({
+        user_id: session.user.id,
+        category: sess.category,
+        note: sess.note,
+        start_time: new Date(sess.startTime).toISOString(),
+        end_time: new Date(sess.endTime).toISOString(),
+        duration_ms: sess.durationMs,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setSessions((prev) => [
+        { id: data.id, category: data.category, note: data.note, durationMs: data.duration_ms },
+        ...prev,
+      ]);
+    }
   };
 
-  const handleAddTask = (task) => setTasks((prev) => [task, ...prev]);
-  const handleToggleTask = (id) =>
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
-  const handleDeleteTask = (id) => setTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleAddTask = async (task) => {
+    if (!session) return;
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: session.user.id,
+        title: task.title,
+        priority: task.priority,
+        done: false,
+      })
+      .select()
+      .single();
+
+    if (!error && data) setTasks((prev) => [data, ...prev]);
+  };
+
+  const handleToggleTask = async (id) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    const { error } = await supabase.from('tasks').update({ done: !task.done }).eq('id', id);
+    if (!error) {
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    if (!error) setTasks((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const setTargetHours = async (hours) => {
+    setTargetHoursState(hours);
+    if (!session) return;
+    await supabase.from('user_settings').upsert({ user_id: session.user.id, target_hours: hours });
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setTasks([]);
+    setSessions([]);
   };
 
   if (authLoading) {
@@ -80,6 +149,14 @@ function App() {
 
   if (!session) {
     return <LoginScreen />;
+  }
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm text-zinc-400">Loading your data...</p>
+      </div>
+    );
   }
 
   return (
