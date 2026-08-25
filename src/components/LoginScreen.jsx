@@ -25,7 +25,9 @@ function LoginScreen({ onSuccess }) {
           <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-white text-base shadow-sm mb-3">
             ◎
           </div>
-          <h1 className="font-semibold text-zinc-700 dark:text-zinc-200 tracking-tight">FocusGuard</h1>
+          <h1 className="font-semibold text-zinc-700 dark:text-zinc-200 tracking-tight">
+            FocusGuard
+          </h1>
           <p className="text-xs text-zinc-400 mt-1">Sign in to continue</p>
         </div>
 
