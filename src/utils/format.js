@@ -124,3 +124,25 @@ export function computeStreak(sessions, targetHours) {
 
   return streak;
 }
+
+export function exportSessionsToCSV(sessions) {
+  const headers = ['Date', 'Category', 'Duration (minutes)', 'Note'];
+  const rows = sessions.map((s) => {
+    const date = s.startTime ? new Date(s.startTime).toLocaleString() : '';
+    const minutes = Math.round(s.durationMs / 60000);
+    const note = (s.note || '').replace(/"/g, '""'); // escape quotes for CSV safety
+    return [date, s.category, minutes, `"${note}"`];
+  });
+
+  const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `focusguard-sessions-${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

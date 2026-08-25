@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { exportSessionsToCSV } from '../utils/format';
+
 import {
   BarChart,
   Bar,
@@ -62,6 +64,13 @@ function Insights({ sessions }) {
 
   return (
     <div className="w-full max-w-sm space-y-4">
+      <button
+        onClick={() => exportSessionsToCSV(sessions)}
+        disabled={sessions.length === 0}
+        className="w-full py-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-sm font-medium disabled:opacity-40"
+      >
+        Export as CSV
+      </button>
       <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm">
         <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-4">
           Last 7 days (minutes wasted)
