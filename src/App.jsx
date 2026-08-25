@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LoginScreen from './components/LoginScreen';
 import Tracker from './components/Tracker';
 import TaskList from './components/TaskList';
@@ -12,8 +12,22 @@ function App() {
     category: 'Social Media',
     note: '',
   });
-  const [sessions, setSessions] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [sessions, setSessions] = useState(() => {
+    const raw = localStorage.getItem('focus_sessions');
+    return raw ? JSON.parse(raw) : [];
+  });
+  const [tasks, setTasks] = useState(() => {
+    const raw = localStorage.getItem('focus_tasks');
+    return raw ? JSON.parse(raw) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('focus_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    localStorage.setItem('focus_tasks', JSON.stringify(tasks));
+  }, [tasks]);
 
   const handleSuccess = () => {
     sessionStorage.setItem('focus_authed', 'true');
